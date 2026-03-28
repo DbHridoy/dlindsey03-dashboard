@@ -1,41 +1,14 @@
 import { Link } from "react-router-dom";
 
-const previewRows = [
-  {
-    id: "01",
-    name: "Robert Fox",
-    email: "fox@email",
-    joined: "02-24-2024",
-    accent: "#e8bf9e",
-    status: "active",
-  },
-  {
-    id: "02",
-    name: "Jenny Wilson",
-    email: "jenny@email",
-    joined: "03-18-2024",
-    accent: "#a7d0ff",
-    status: "blocked",
-  },
-  {
-    id: "03",
-    name: "Cody Fisher",
-    email: "cody@email",
-    joined: "04-02-2024",
-    accent: "#f2b8c6",
-    status: "active",
-  },
-  {
-    id: "04",
-    name: "Savannah Nguyen",
-    email: "savannah@email",
-    joined: "04-21-2024",
-    accent: "#9cd8d1",
-    status: "active",
-  },
-];
+function formatDate(value) {
+  if (!value) {
+    return "N/A";
+  }
 
-export function DashboardUserList() {
+  return new Date(value).toLocaleDateString();
+}
+
+export function DashboardUserList({ users, isLoading, error }) {
   return (
     <section>
       <div className="mb-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -59,39 +32,56 @@ export function DashboardUserList() {
           </div>
 
           <div className="bg-linear-to-r from-[#254587] to-[#125c5d] text-white">
-            {previewRows.map((user) => (
+            {isLoading ? (
+              <div className="px-4 py-8 text-center text-sm text-white/80">
+                Loading users...
+              </div>
+            ) : null}
+            {!isLoading && error ? (
+              <div className="px-4 py-8 text-center text-sm text-white/80">
+                {error}
+              </div>
+            ) : null}
+            {!isLoading && !error && users.length === 0 ? (
+              <div className="px-4 py-8 text-center text-sm text-white/80">
+                No users found.
+              </div>
+            ) : null}
+            {!isLoading && !error && users.map((user, index) => (
               <div
-                key={user.id}
+                key={user._id}
                 className="grid grid-cols-[0.55fr_1.55fr_1.2fr_0.95fr_0.65fr] items-center border-b border-white/35 px-4 py-2.5 text-[0.78rem] transition hover:bg-white/6"
               >
-                <p>{user.id}</p>
+                <p>{String(index + 1).padStart(2, "0")}</p>
                 <div className="flex items-center gap-3">
                   <span
                     className="grid h-7 w-7 place-items-center rounded-full text-[0.62rem] font-semibold text-slate-900"
-                    style={{ backgroundColor: user.accent }}
+                    style={{ backgroundColor: user.isBlocked ? "#f2b8c6" : "#a7d0ff" }}
                   >
-                    {user.name
+                    {user.fullName
                       .split(" ")
                       .map((part) => part[0])
                       .join("")
                       .slice(0, 2)}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate">{user.name}</p>
-                    <p className="text-[0.66rem] capitalize text-white/60">{user.status}</p>
+                    <p className="truncate">{user.fullName}</p>
+                    <p className="text-[0.66rem] capitalize text-white/60">
+                      {user.isBlocked ? "blocked" : user.role}
+                    </p>
                   </div>
                 </div>
                 <p className="truncate">{user.email}</p>
-                <p>{user.joined}</p>
+                <p>{formatDate(user.createdAt)}</p>
                 <div className="flex items-center justify-center gap-3 text-base">
                   <Link
-                    to={user.status === "blocked" ? "/blocked-user-details" : "/confirm-block-user"}
+                    to="/user"
                     className="text-[#ff5a52]"
-                    aria-label={user.status === "blocked" ? "Blocked user" : "Block user"}
+                    aria-label={user.isBlocked ? "Blocked user" : "Manage user"}
                   >
                     ⊘
                   </Link>
-                  <Link to="/user-details" className="text-[#12e1d4]" aria-label="View user">
+                  <Link to="/user" className="text-[#12e1d4]" aria-label="View user">
                     ◉
                   </Link>
                 </div>

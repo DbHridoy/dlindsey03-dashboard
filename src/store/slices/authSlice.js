@@ -1,23 +1,52 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { readAuthSession } from "../../lib/authStorage";
+import {
+  clearAuthSession,
+  readAuthSession,
+  writeAuthSession,
+} from "../../lib/authStorage";
+
+const persistedSession = readAuthSession();
 
 const initialState = {
-  isAuthenticated: readAuthSession(),
+  isAuthenticated: persistedSession.isAuthenticated,
+  accessToken: persistedSession.accessToken,
+  user: persistedSession.user,
 };
 
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    logIn(state) {
-      state.isAuthenticated = true;
+    setSession(state, action) {
+      const nextSession = {
+        accessToken: action.payload?.accessToken || "",
+        user: action.payload?.user || null,
+      };
+
+      state.isAuthenticated = Boolean(nextSession.accessToken);
+      state.accessToken = nextSession.accessToken;
+      state.user = nextSession.user;
+      writeAuthSession(nextSession);
     },
-    logOut(state) {
+    updateCurrentUser(state, action) {
+      state.user = action.payload || null;
+
+      if (state.accessToken) {
+        writeAuthSession({
+          accessToken: state.accessToken,
+          user: state.user,
+        });
+      }
+    },
+    clearSession(state) {
       state.isAuthenticated = false;
+      state.accessToken = "";
+      state.user = null;
+      clearAuthSession();
     },
   },
 });
 
-export const { logIn, logOut } = authSlice.actions;
+export const { setSession, updateCurrentUser, clearSession } = authSlice.actions;
 
 export default authSlice.reducer;

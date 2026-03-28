@@ -1,20 +1,49 @@
 import { useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AuthButton } from "../components/AuthButton";
 import { AuthPageTitle } from "../components/AuthPageTitle";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { apiRequest } from "../lib/api";
 
 const OTP_LENGTH = 4;
 
 export function VerifyOtpPage() {
+  const location = useLocation();
   const navigate = useNavigate();
   const [otp, setOtp] = useState(() => Array(OTP_LENGTH).fill(""));
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRefs = useRef([]);
   usePageTitle("Verify OTP");
+  const email = location.state?.email;
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    navigate("/set-new-password");
+
+    if (!email) {
+      setErrorMessage("Reset email is missing. Start again.");
+      return;
+    }
+
+    setErrorMessage("");
+    setIsSubmitting(true);
+
+    try {
+      await apiRequest("/auth/verify-otp", {
+        method: "POST",
+        body: {
+          email,
+          otp: otp.join(""),
+        },
+      });
+      navigate("/set-new-password", {
+        state: { email },
+      });
+    } catch (error) {
+      setErrorMessage(error.message || "Invalid OTP");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function handleChange(index, value) {
@@ -104,7 +133,13 @@ export function VerifyOtpPage() {
           </Link> */}
         </div>
 
-        <AuthButton type="submit">Verify</AuthButton>
+        {errorMessage ? (
+          <p className="text-center text-base text-[#ff4e4e]">{errorMessage}</p>
+        ) : null}
+
+        <AuthButton type="submit">
+          {isSubmitting ? "Verifying..." : "Verify"}
+        </AuthButton>
       </form>
     </section>
   );

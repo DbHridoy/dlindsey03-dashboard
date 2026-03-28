@@ -4,6 +4,12 @@ export function AuthField({
   placeholder = "",
   error,
   trailingIcon,
+  name,
+  value,
+  onChange,
+  autoComplete,
+  disabled = false,
+  required = false,
 }) {
   return (
     <label className="block">
@@ -15,7 +21,13 @@ export function AuthField({
       <div className="relative">
         <input
           type={type}
+          name={name}
           placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          autoComplete={autoComplete}
+          disabled={disabled}
+          required={required}
           className="h-13 w-full rounded-lg border border-white/35 bg-white/95 px-4 text-base text-slate-900 outline-none placeholder:text-slate-400 md:h-14 md:text-lg"
         />
         {trailingIcon ? (

@@ -10,40 +10,26 @@ import {
   YAxis,
 } from "recharts";
 
-const chartDataByYear = {
-  2024: [
-    { label: "Jan", value: 680 },
-    { label: "Feb", value: 380 },
-    { label: "Mar", value: 780 },
-    { label: "Apr", value: 560 },
-    { label: "May", value: 450 },
-    { label: "Jun", value: 850 },
-    { label: "Jul", value: 550 },
-    { label: "Aug", value: 610 },
-    { label: "Sep", value: 830 },
-    { label: "Oct", value: 730 },
-    { label: "Nov", value: 560 },
-    { label: "Dec", value: 780 },
-  ],
-  2025: [
-    { label: "Jan", value: 520 },
-    { label: "Feb", value: 460 },
-    { label: "Mar", value: 640 },
-    { label: "Apr", value: 590 },
-    { label: "May", value: 720 },
-    { label: "Jun", value: 760 },
-    { label: "Jul", value: 700 },
-    { label: "Aug", value: 820 },
-    { label: "Sep", value: 870 },
-    { label: "Oct", value: 790 },
-    { label: "Nov", value: 740 },
-    { label: "Dec", value: 910 },
-  ],
-};
+const availableYears = Array.from(
+  { length: 4 },
+  (_, index) => String(new Date().getFullYear() - index),
+);
 
-export function DashboardUsersChart({ selectedYear, onYearChange }) {
-  const chartData = chartDataByYear[selectedYear];
-  const activeIndex = chartData.reduce(
+export function DashboardUsersChart({
+  selectedYear,
+  onYearChange,
+  chartData,
+  isLoading,
+  error,
+}) {
+  const safeChartData = chartData.map((item) => ({
+    label: item.label,
+    value: item.total,
+  }));
+
+  const activeIndex = safeChartData.length === 0
+    ? -1
+    : safeChartData.reduce(
     (bestIndex, item, index, items) =>
       item.value > items[bestIndex].value ? index : bestIndex,
     0,
@@ -66,7 +52,7 @@ export function DashboardUsersChart({ selectedYear, onYearChange }) {
             onChange={(event) => onYearChange(event.target.value)}
             className="rounded-[4px] bg-[#22d3c8] px-3.5 py-2 text-[0.84rem] font-medium text-white outline-none"
           >
-            {Object.keys(chartDataByYear).map((year) => (
+            {availableYears.map((year) => (
               <option key={year} value={year} className="text-slate-900">
                 Year-{year}
               </option>
@@ -76,9 +62,20 @@ export function DashboardUsersChart({ selectedYear, onYearChange }) {
       </div>
 
       <div className="h-[260px] w-full">
+        {isLoading ? (
+          <div className="grid h-full place-items-center text-white/80">
+            Loading chart...
+          </div>
+        ) : null}
+        {!isLoading && error ? (
+          <div className="grid h-full place-items-center text-center text-sm text-white/80">
+            {error}
+          </div>
+        ) : null}
+        {!isLoading && !error ? (
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
-                data={chartData}
+                data={safeChartData}
                 margin={{ top: 14, right: 8, left: -18, bottom: 4 }}
                 barCategoryGap="20%"
               >
@@ -122,8 +119,8 @@ export function DashboardUsersChart({ selectedYear, onYearChange }) {
                       entryIndex === activeIndex ? value : ""
                     }
                     style={{ fill: "#18d4c8", fontSize: 11, fontWeight: 700 }}
-                  />
-              {chartData.map((item, index) => (
+                />
+              {safeChartData.map((item, index) => (
                 <Cell
                   key={`${selectedYear}-${item.label}`}
                   fill={index === activeIndex ? "#18d4c8" : "#d7e7ff"}
@@ -132,6 +129,7 @@ export function DashboardUsersChart({ selectedYear, onYearChange }) {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        ) : null}
       </div>
     </article>
   );

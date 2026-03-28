@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { apiRequest } from "../lib/api";
 
 function MenuIcon() {
   return (
@@ -32,6 +34,38 @@ function UserIcon() {
 
 export function Topbar() {
   useSelector((state) => state.layout.title);
+  const user = useSelector((state) => state.auth.user);
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  const displayName = user?.fullName?.split(" ")?.[0] || "Admin";
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadNotificationCount() {
+      try {
+        const payload = await apiRequest("/notification/me");
+
+        if (!isMounted) {
+          return;
+        }
+
+        setNotificationCount((payload.data || []).length);
+      } catch {
+        if (!isMounted) {
+          return;
+        }
+
+        setNotificationCount(0);
+      }
+    }
+
+    void loadNotificationCount();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <header className="fixed left-3 right-3 top-3 z-10 md:left-[266px] md:right-4 md:top-4">
@@ -42,7 +76,7 @@ export function Topbar() {
           </button>
           <div className="leading-tight">
             <h1 className="text-[0.95rem] font-semibold text-white">
-              Welcome,James
+              Welcome, {displayName}
             </h1>
             <p className="mt-1 text-[0.83rem] text-white/80">
               Have a nice day!
@@ -56,9 +90,11 @@ export function Topbar() {
             className="relative grid h-11 w-11 place-items-center rounded-full border border-[#16d2c7] text-[#16d2c7]"
             aria-label="Notifications"
           >
-            <span className="absolute right-1 top-1 h-3.5 w-3.5 rounded-full bg-red-500 text-center text-[0.55rem] leading-[14px] text-white">
-              1
-            </span>
+            {notificationCount > 0 ? (
+              <span className="absolute right-1 top-1 h-3.5 min-w-3.5 rounded-full bg-red-500 px-0.5 text-center text-[0.55rem] leading-[14px] text-white">
+                {notificationCount > 9 ? "9+" : notificationCount}
+              </span>
+            ) : null}
             <BellIcon />
           </Link>
           <Link

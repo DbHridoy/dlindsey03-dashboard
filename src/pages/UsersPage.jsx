@@ -1,47 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { DashboardPanel } from "../components/DashboardPanel";
+import { apiRequest } from "../lib/api";
 
-const initialUsers = [
-  {
-    id: "01",
-    name: "Robert Fox",
-    email: "fox@email.com",
-    phone: "+1 222 333 4444",
-    joiningDate: "02-24-2024",
-    userType: "Clients",
-    isBlocked: false,
-  },
-  {
-    id: "02",
-    name: "Jenny Wilson",
-    email: "jenny@email.com",
-    phone: "+1 444 333 1234",
-    joiningDate: "02-12-2024",
-    userType: "Clients",
-    isBlocked: true,
-  },
-  {
-    id: "03",
-    name: "Wade Warren",
-    email: "wade@email.com",
-    phone: "+1 333 221 6543",
-    joiningDate: "01-29-2024",
-    userType: "Clients",
-    isBlocked: false,
-  },
-  {
-    id: "04",
-    name: "Jacob Jones",
-    email: "jacob@email.com",
-    phone: "+1 555 222 1111",
-    joiningDate: "01-16-2024",
-    userType: "Clients",
-    isBlocked: true,
-  },
-];
-
-const USERS_PER_PAGE = 3;
+const USERS_PER_PAGE = 10;
 
 function SearchIcon() {
   return (
@@ -93,7 +55,40 @@ function ModalShell({ children }) {
   );
 }
 
-function BlockUserModal({ user, onCancel, onConfirm }) {
+function formatDate(value) {
+  if (!value) {
+    return "N/A";
+  }
+
+  return new Date(value).toLocaleDateString();
+}
+
+function mapUser(user) {
+  return {
+    id: user._id,
+    name: user.fullName,
+    email: user.email,
+    phone: user.phoneNumber || "N/A",
+    joiningDate: formatDate(user.createdAt),
+    userType: user.role,
+    isBlocked: Boolean(user.isBlocked),
+    rawUser: user,
+  };
+}
+
+function ModalActionButton({ children, ...props }) {
+  return (
+    <button
+      type="button"
+      {...props}
+      className="grid h-12 place-items-center rounded-[4px] bg-linear-to-r from-[#35cac8] to-[#17dcd0] text-xl font-semibold text-white"
+    >
+      {children}
+    </button>
+  );
+}
+
+function BlockUserModal({ user, onCancel, onConfirm, isSubmitting }) {
   return (
     <ModalShell>
       <section className="w-full max-w-3xl rounded-[14px] bg-[#222d42] px-6 py-10 text-center shadow-[0_10px_26px_rgba(15,24,28,0.22)] sm:px-10 sm:py-14">
@@ -114,9 +109,10 @@ function BlockUserModal({ user, onCancel, onConfirm }) {
           <button
             type="button"
             onClick={onConfirm}
+            disabled={isSubmitting}
             className="grid h-12 place-items-center rounded-[4px] bg-[#ff4048] text-xl font-semibold text-white"
           >
-            Yes, Confirm
+            {isSubmitting ? "Saving..." : "Yes, Confirm"}
           </button>
         </div>
       </section>
@@ -172,13 +168,9 @@ function UserDetailsModal({ user, onClose, onAction }) {
           >
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={onAction}
-            className="grid h-12 place-items-center rounded-[4px] bg-linear-to-r from-[#35cac8] to-[#17dcd0] text-xl font-semibold text-white"
-          >
+          <ModalActionButton onClick={onAction}>
             {user.isBlocked ? "Unblock" : "Block"}
-          </button>
+          </ModalActionButton>
         </div>
       </section>
     </ModalShell>
@@ -186,46 +178,73 @@ function UserDetailsModal({ user, onClose, onAction }) {
 }
 
 export function UsersPage() {
-  const [users, setUsers] = useState(initialUsers);
+  const [users, setUsers] = useState([]);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [showBlockedOnly, setShowBlockedOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState(null);
   const [blockTarget, setBlockTarget] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isUpdatingBlockState, setIsUpdatingBlockState] = useState(false);
   usePageTitle("Users");
 
-  const filteredUsers = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-    const sourceUsers = showBlockedOnly
-      ? users.filter((user) => user.isBlocked)
-      : users;
-
-    if (!normalizedQuery) {
-      return sourceUsers;
-    }
-
-    return sourceUsers.filter((user) =>
-      [user.id, user.name, user.email].some((value) =>
-        value.toLowerCase().includes(normalizedQuery),
-      ),
-    );
-  }, [searchQuery, showBlockedOnly, users]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalUsers / USERS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const pageStartIndex = (safeCurrentPage - 1) * USERS_PER_PAGE;
-  const paginatedUsers = filteredUsers.slice(pageStartIndex, pageStartIndex + USERS_PER_PAGE);
   const visiblePageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadUsers() {
+      setIsLoading(true);
+      setErrorMessage("");
+
+      try {
+        const payload = await apiRequest("/user", {
+          query: {
+            page: safeCurrentPage,
+            limit: USERS_PER_PAGE,
+            search: searchQuery.trim(),
+            isBlocked: showBlockedOnly ? true : undefined,
+          },
+        });
+
+        if (!isMounted) {
+          return;
+        }
+
+        setUsers((payload.data || []).map(mapUser));
+        setTotalUsers(payload.total || 0);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setUsers([]);
+        setTotalUsers(0);
+        setErrorMessage(error.message || "Unable to load users");
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadUsers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [safeCurrentPage, searchQuery, showBlockedOnly]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, showBlockedOnly]);
 
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
+  const paginatedUsers = useMemo(() => users, [users]);
 
   function openViewModal(user) {
     setSelectedUser(user);
@@ -249,22 +268,41 @@ export function UsersPage() {
     setSelectedUser(null);
   }
 
-  function handleConfirmBlock() {
+  async function handleConfirmBlock() {
     const targetUser = blockTarget;
-    setBlockTarget(null);
 
-    if (targetUser) {
+    if (!targetUser) {
+      return;
+    }
+
+    setIsUpdatingBlockState(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("isBlocked", String(!targetUser.isBlocked));
+
+      const payload = await apiRequest(`/user/${targetUser.id}`, {
+        method: "PATCH",
+        body: formData,
+      });
+
+      const nextUser = mapUser(payload.data);
+
       setUsers((currentUsers) =>
         currentUsers.map((user) =>
-          user.id === targetUser.id
-            ? { ...user, isBlocked: !user.isBlocked }
-            : user,
+          user.id === nextUser.id ? nextUser : user,
         ),
       );
+      setBlockTarget(null);
+      setSelectedUser(null);
 
       if (!targetUser.isBlocked) {
         setShowBlockedOnly(true);
       }
+    } catch (error) {
+      setErrorMessage(error.message || "Unable to update user");
+    } finally {
+      setIsUpdatingBlockState(false);
     }
   }
 
@@ -299,6 +337,11 @@ export function UsersPage() {
         headerClassName="flex-col items-start sm:flex-row sm:items-center"
       >
         <div className="px-4 py-3 sm:px-5 sm:py-4">
+          {errorMessage ? (
+            <p className="px-4 pb-3 text-sm font-medium text-[#ff4e4e]">
+              {errorMessage}
+            </p>
+          ) : null}
           <div className="overflow-x-auto">
             <div className="min-w-[720px]">
               <div className="grid grid-cols-[0.7fr_1.6fr_1.5fr_0.8fr] px-4 py-3 text-[0.95rem] text-[#1aded1]">
@@ -307,12 +350,22 @@ export function UsersPage() {
                 <p>Email</p>
                 <p className="text-center">Action</p>
               </div>
-              {paginatedUsers.map((user) => (
+              {isLoading ? (
+                <div className="border-t border-white/55 px-4 py-8 text-center text-white">
+                  Loading users...
+                </div>
+              ) : null}
+              {!isLoading && paginatedUsers.length === 0 ? (
+                <div className="border-t border-white/55 px-4 py-8 text-center text-white">
+                  No users found.
+                </div>
+              ) : null}
+              {!isLoading && paginatedUsers.map((user, index) => (
                 <div
                   key={user.id}
                   className="grid grid-cols-[0.7fr_1.6fr_1.5fr_0.8fr] items-center border-t border-white/55 px-4 py-3 text-[0.95rem] text-white"
                 >
-                  <p>{user.id}</p>
+                  <p>{String(pageStartIndex + index + 1).padStart(2, "0")}</p>
                   <div className="flex items-center gap-3">
                     <Avatar name={user.name} />
                     <span>{user.name}</span>
@@ -343,8 +396,8 @@ export function UsersPage() {
 
           <div className="mt-14 flex flex-col gap-4 px-2 pb-4 text-[#12ddd0] md:flex-row md:items-center md:justify-between">
             <p className="text-[0.9rem]">
-              SHOWING {filteredUsers.length === 0 ? 0 : pageStartIndex + 1}-
-              {Math.min(pageStartIndex + paginatedUsers.length, filteredUsers.length)} OF {filteredUsers.length}
+              SHOWING {totalUsers === 0 ? 0 : pageStartIndex + 1}-
+              {Math.min(pageStartIndex + paginatedUsers.length, totalUsers)} OF {totalUsers}
             </p>
             <div className="flex flex-wrap items-center gap-4 text-white/75">
               <button
@@ -399,6 +452,7 @@ export function UsersPage() {
           user={blockTarget}
           onCancel={closeBlockModal}
           onConfirm={handleConfirmBlock}
+          isSubmitting={isUpdatingBlockState}
         />
       ) : null}
     </>

@@ -1,11 +1,12 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { DashboardPanel } from "../components/DashboardPanel";
+import { apiRequest, getCurrentUser } from "../lib/api";
 
 const initialProfile = {
-  userName: "Mr. Admin",
-  email: "email@gmail.com",
-  contactNo: "+1 222 333 4444",
+  userName: "",
+  email: "",
+  contactNo: "",
   avatar: "",
 };
 
@@ -44,13 +45,57 @@ export function ProfilePage() {
   const [draftProfile, setDraftProfile] = useState(initialProfile);
   const [isEditing, setIsEditing] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
   usePageTitle("Profile");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadProfile() {
+      try {
+        const user = await getCurrentUser();
+
+        if (!isMounted) {
+          return;
+        }
+
+        const nextProfile = {
+          userName: user.fullName || "",
+          email: user.email || "",
+          contactNo: user.phoneNumber || "",
+          avatar: user.profileImage || "",
+        };
+
+        setProfile(nextProfile);
+        setDraftProfile(nextProfile);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setErrorMessage(error.message || "Unable to load profile");
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   function handleEditStart() {
     setDraftProfile(profile);
     setIsEditing(true);
     setStatusMessage("");
+    setErrorMessage("");
   }
 
   function handleCancel() {
@@ -94,11 +139,60 @@ export function ProfilePage() {
     setStatusMessage("Profile picture selected. Save to apply changes.");
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    setProfile(draftProfile);
-    setIsEditing(false);
-    setStatusMessage("Profile updated successfully.");
+    setStatusMessage("");
+    setErrorMessage("");
+    const formData = new FormData();
+
+    if (draftProfile.userName && draftProfile.userName !== profile.userName) {
+      formData.append("fullName", draftProfile.userName);
+    }
+
+    if (
+      draftProfile.contactNo &&
+      draftProfile.contactNo !== profile.contactNo
+    ) {
+      formData.append("phoneNumber", draftProfile.contactNo);
+    }
+
+    const selectedFile = fileInputRef.current?.files?.[0];
+    if (selectedFile) {
+      formData.append("profileImage", selectedFile);
+    }
+
+    if ([...formData.keys()].length === 0) {
+      setStatusMessage("No changes to update.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const payload = await apiRequest("/user/me", {
+        method: "PATCH",
+        body: formData,
+      });
+
+      const nextProfile = {
+        userName: payload.data.fullName || "",
+        email: payload.data.email || "",
+        contactNo: payload.data.phoneNumber || "",
+        avatar: payload.data.profileImage || "",
+      };
+
+      setProfile(nextProfile);
+      setDraftProfile(nextProfile);
+      setIsEditing(false);
+      setStatusMessage("Profile updated successfully.");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error) {
+      setErrorMessage(error.message || "Unable to update profile");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   const currentProfile = isEditing ? draftProfile : profile;
@@ -118,6 +212,10 @@ export function ProfilePage() {
       action={action}
       contentClassName="px-4 py-6 sm:px-6"
     >
+      {isLoading ? (
+        <div className="py-10 text-center text-white/80">Loading profile...</div>
+      ) : null}
+      {!isLoading ? (
       <form onSubmit={handleSubmit} className="mx-auto grid max-w-[420px] justify-items-center gap-6 py-1">
         <button
           type="button"
@@ -187,15 +285,21 @@ export function ProfilePage() {
             {statusMessage}
           </p>
         ) : null}
+        {errorMessage ? (
+          <p className="text-center text-sm font-medium text-[#ff4e4e]">
+            {errorMessage}
+          </p>
+        ) : null}
 
         <button
           type="submit"
-          disabled={!isEditing}
+          disabled={!isEditing || isSubmitting}
           className="h-11 w-full rounded-[6px] bg-linear-to-r from-[#32cbc9] to-[#11d9cd] text-lg font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Update Profile
+          {isSubmitting ? "Updating..." : "Update Profile"}
         </button>
       </form>
+      ) : null}
     </DashboardPanel>
   );
 }

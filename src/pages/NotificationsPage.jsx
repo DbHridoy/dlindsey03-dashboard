@@ -1,17 +1,7 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle";
-
-const notifications = [
-  "Profile report!",
-  "A new Verification request!",
-  "Profile report!",
-  "Profile report!",
-  "A new user join in your app.",
-  "A new user join in your app.",
-  "A new user join in your app.",
-  "A new user join in your app.",
-  "A new user join in your app.",
-];
+import { apiRequest } from "../lib/api";
 
 function BellBadge() {
   return (
@@ -32,8 +22,51 @@ function BellBadge() {
   );
 }
 
+function formatNotificationDate(value) {
+  if (!value) {
+    return "Unknown time";
+  }
+
+  return new Date(value).toLocaleString();
+}
+
 export function NotificationsPage() {
+  const [notifications, setNotifications] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
   usePageTitle("Notifications");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadNotifications() {
+      try {
+        const payload = await apiRequest("/notification/me");
+
+        if (!isMounted) {
+          return;
+        }
+
+        setNotifications(payload.data || []);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setErrorMessage(error.message || "Unable to load notifications");
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadNotifications();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <section>
@@ -51,19 +84,37 @@ export function NotificationsPage() {
 
         <div className="px-3 py-5 md:px-4">
           <div className="space-y-8">
-            {notifications.map((message, index) => (
-              <div key={`${message}-${index}`} className="flex items-start gap-3">
-                <BellBadge />
-                <div className="pt-0.5 text-white">
-                  <p className="text-[1.05rem] font-medium leading-6">{message}</p>
-                  <p className="mt-1 text-[0.95rem] text-white/50">Fri, 12:30pm</p>
+            {isLoading ? (
+              <p className="px-2 text-white/75">Loading notifications...</p>
+            ) : null}
+            {!isLoading && errorMessage ? (
+              <p className="px-2 text-[#ff8080]">{errorMessage}</p>
+            ) : null}
+            {!isLoading && !errorMessage && notifications.length === 0 ? (
+              <p className="px-2 text-white/75">No notifications found.</p>
+            ) : null}
+            {!isLoading &&
+              !errorMessage &&
+              notifications.map((notification) => (
+                <div key={notification._id} className="flex items-start gap-3">
+                  <BellBadge />
+                  <div className="pt-0.5 text-white">
+                    <p className="text-[1.05rem] font-medium leading-6">
+                      {notification.title}
+                    </p>
+                    <p className="mt-1 text-[0.98rem] text-white/70">
+                      {notification.message}
+                    </p>
+                    <p className="mt-1 text-[0.95rem] text-white/50">
+                      {formatNotificationDate(notification.createdAt)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
 
           <div className="mt-12 flex justify-end pr-14 text-white">
-            <span className="text-sm">1</span>
+            <span className="text-sm">{notifications.length}</span>
           </div>
         </div>
       </article>

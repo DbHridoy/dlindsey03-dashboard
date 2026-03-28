@@ -1,16 +1,20 @@
-import { useDispatch } from "react-redux";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { writeAuthSession } from "../lib/authStorage";
-import { logOut } from "../store/slices/authSlice";
+import { logoutUser } from "../lib/api";
 
 export function LogoutModal({ onClose }) {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleLogout() {
-    writeAuthSession(false);
-    dispatch(logOut());
-    navigate("/login", { replace: true });
+  async function handleLogout() {
+    setIsSubmitting(true);
+
+    try {
+      await logoutUser();
+      navigate("/login", { replace: true });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -31,9 +35,10 @@ export function LogoutModal({ onClose }) {
           <button
             type="button"
             onClick={handleLogout}
+            disabled={isSubmitting}
             className="grid h-10 place-items-center rounded-[4px] bg-[#ff4048] text-lg font-semibold text-white"
           >
-            Yes, Confirm
+            {isSubmitting ? "Logging out..." : "Yes, Confirm"}
           </button>
         </div>
       </div>
