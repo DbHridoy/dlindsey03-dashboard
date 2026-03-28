@@ -110,15 +110,27 @@ export function ResolveReportPage() {
       return;
     }
 
+    const trimmedNotes = notes.trim();
+
+    if (!trimmedNotes) {
+      setErrorMessage("Resolution note is required");
+      return;
+    }
+
     setErrorMessage("");
     setIsSubmitting(true);
 
     try {
-      await apiRequest(`/support/${report._id}/status`, {
+      const formData = new FormData();
+      formData.append("resolutionNote", trimmedNotes);
+
+      attachments.forEach((file) => {
+        formData.append("attachments", file);
+      });
+
+      await apiRequest(`/support/${report._id}/resolve`, {
         method: "PATCH",
-        body: {
-          status: "resolved",
-        },
+        body: formData,
       });
 
       navigate(`/reports/${report._id}`, { replace: true });
@@ -265,8 +277,8 @@ export function ResolveReportPage() {
         </div>
 
         <div className="rounded-[8px] border border-[#35cac8]/30 bg-[#123531] px-4 py-4 text-sm text-white/80">
-          This action updates the report status to `resolved` in the backend.
-          Resolution notes and attachments are currently local-only because the API does not store them yet.
+          This action resolves and closes the report in the backend, sends the
+          resolution note to the reporting user, and uploads any attached files.
         </div>
 
         {errorMessage ? (
@@ -277,7 +289,7 @@ export function ResolveReportPage() {
           <button
             type="button"
             onClick={handleResolve}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !notes.trim()}
             className="grid h-12 place-items-center rounded-[6px] bg-linear-to-r from-[#35cac8] to-[#17dcd0] px-6 text-xl font-semibold text-white disabled:opacity-60"
           >
             {isSubmitting ? "Resolving..." : "✓ Resolve & Close Report"}
