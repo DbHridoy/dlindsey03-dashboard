@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { AuthButton } from "../components/AuthButton";
 import { AuthField } from "../components/AuthField";
@@ -64,11 +64,6 @@ export function ResetPasswordPage() {
           <PasswordField label="Current Password" />
           <PasswordField label="New Password" />
           <PasswordField label="Confirm New Password" />
-          <div className="flex justify-end">
-            <Link to="/forgot-password" className="text-[0.95rem] text-[#13ddd0] underline">
-              Forgot password?
-            </Link>
-          </div>
           <button
             type="submit"
             className="mt-4 h-11 rounded-[6px] bg-linear-to-r from-[#32cbc9] to-[#11d9cd] text-lg font-semibold text-white"

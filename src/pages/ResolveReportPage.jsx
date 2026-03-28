@@ -27,25 +27,6 @@ export function ResolveReportPage() {
           />
         </label>
 
-        <label className="grid gap-3">
-          <span className="text-lg font-medium">Resolution Type</span>
-          <select className="h-12 rounded-[8px] bg-white px-4 text-[1rem] text-[#2d4ca0] outline-none">
-            <option>Select resolution type</option>
-            <option>Warning Issued</option>
-            <option>Temporary Suspension</option>
-            <option>Account Restricted</option>
-          </select>
-        </label>
-
-        <label className="grid gap-3">
-          <span className="text-lg font-medium">Penalty or Action Taken (Optional)</span>
-          <input
-            type="text"
-            placeholder="e,g. 7-day suspension, content removal"
-            className="h-12 rounded-[8px] bg-white px-4 text-[1rem] text-[#2d4ca0] outline-none placeholder:text-[#2d4ca0]"
-          />
-        </label>
-
         <div className="grid gap-3">
           <span className="text-lg font-medium">Attach Supporting Documents (Optional)</span>
           <button
@@ -64,7 +45,6 @@ export function ResolveReportPage() {
 
         <div className="grid gap-3 pt-1">
           <CheckRow label="Notify Reporter by Email" />
-          <CheckRow label="Notify Reported User by Email" />
         </div>
 
         <div className="grid gap-4 pt-4 sm:grid-cols-[1fr_auto]">

@@ -5,17 +5,6 @@ function PasswordAdornment() {
   return <span className="text-white/80">⌁</span>;
 }
 
-function UploadIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M12 16V7" />
-      <path d="m8.5 10.5 3.5-3.5 3.5 3.5" />
-      <path d="M5 17.5a2.5 2.5 0 0 0 2.5 2.5h9A2.5 2.5 0 0 0 19 17.5" />
-      <rect x="4" y="4" width="16" height="16" rx="3" />
-    </svg>
-  );
-}
-
 function Field({ label, type = "text", placeholder, right }) {
   return (
     <label className="grid gap-2 text-[1rem] text-white">
@@ -58,19 +47,6 @@ export function CreateAdminPage() {
               placeholder="********"
               right={<PasswordAdornment />}
             />
-          </div>
-
-          <div className="grid gap-3">
-            <span className="text-[1rem] text-white">Profile Image</span>
-            <button
-              type="button"
-              className="grid min-h-[98px] place-items-center rounded-[6px] bg-[#243149]/80 text-white/80"
-            >
-              <span className="grid justify-items-center gap-2">
-                <UploadIcon />
-                <span>Upload Image</span>
-              </span>
-            </button>
           </div>
 
           <button
