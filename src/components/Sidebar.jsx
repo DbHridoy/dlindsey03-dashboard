@@ -29,7 +29,7 @@ export function Sidebar({ onLogoutClick }) {
               [
                 "rounded-[4px] px-4 py-3 text-[0.95rem] font-medium text-white transition hover:bg-white/12",
                 isActive
-                  ? "bg-white text-[#27408b] shadow-sm"
+                  ? "bg-gray-800 shadow-sm"
                   : "",
               ].join(" ")
             }

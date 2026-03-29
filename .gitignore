@@ -6,8 +6,6 @@ dist/
 coverage/
 
 # local env files
-.env
-.env.*
 !.env.example
 
 # logs
@@ -21,10 +19,14 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 .idea/
-.vscode/
 *.swp
 *.swo
 
 # cache
 .cache/
 .vite/
+.vercel
+temp_auto_push.bat
+temp_interactive_push.bat
+config.bat
+branch_structure.json
